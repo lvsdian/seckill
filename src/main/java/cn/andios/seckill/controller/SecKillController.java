@@ -1,6 +1,7 @@
 package cn.andios.seckill.controller;
 
 import cn.andios.seckill.access.AccessLimit;
+import cn.andios.seckill.access.RateLimit;
 import cn.andios.seckill.domain.Order;
 import cn.andios.seckill.domain.SecKillOrder;
 import cn.andios.seckill.domain.SecKillUser;
@@ -36,6 +37,7 @@ import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @description:
@@ -66,7 +68,7 @@ public class SecKillController implements InitializingBean {
      */
     private Map<Long, Boolean> localOverMap = new HashMap<Long, Boolean>();
 
-    private static Logger logger = LoggerFactory.getLogger(SecKillController.class);
+    private static final Logger logger = LoggerFactory.getLogger(SecKillController.class);
 
     /**
      * 用户在goods_detail.html中点击立即秒杀,会携带商品id访问do_secKill1这个接口执行秒杀
@@ -254,11 +256,15 @@ public class SecKillController implements InitializingBean {
      *
      * AccessLimit是自定义注解，起限流防刷作用，如下，表示在5s内最多请求10次，访问这个方法需要登录，配置needLogin=true后也就不需要
      * 判断secKillUser == null
+     *
+     * RateLimit起限流作用，AccessLimit防止一个用户短时间内多次请求，RateLimit是限制所有用户总体的请求数量
+     *
      * @param secKillUser
      * @param goodsId
      * @return
      */
     @AccessLimit(second=5,maxCount=5,needLogin=true)
+    @RateLimit(limit = 10,timeOut = 1,timeOutUnit = TimeUnit.SECONDS)
     @RequestMapping(value = "/path", method = RequestMethod.GET)
     @ResponseBody
     public Result<String> secKillPath(SecKillUser secKillUser, @RequestParam("goodsId") Long goodsId,

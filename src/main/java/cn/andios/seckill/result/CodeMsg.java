@@ -12,6 +12,7 @@ public class CodeMsg {
 	public static CodeMsg SERVER_ERROR = new CodeMsg(500100, "服务端异常");
 	public static CodeMsg BIND_ERROR = new CodeMsg(500101, "参数校验异常:%s");
 	public static CodeMsg ACCESS_LIMIT = new CodeMsg(500102, "访问次数过多，请稍后再进行访问");
+	public static CodeMsg RATE_LIMIT = new CodeMsg(500103, "服务器繁忙，请稍后再进行访问");
 	/**
 	 * 登录模块 5002XX
 	 */
@@ -22,11 +23,8 @@ public class CodeMsg {
 	public static CodeMsg MOBILE_NOT_EXIST = new CodeMsg(500205,"手机号码不存在");
 	public static CodeMsg PASSWORD_ERROR = new CodeMsg(500206,"密码错误");
 	public static CodeMsg MOBILE_OR_PASSWORD_ERROR = new CodeMsg(500207,"账号或密码错误");
-
-	//商品模块 5003XX
 	
 	//订单模块 5004XX
-
 	public static CodeMsg ORDER_NOT_EXIST = new CodeMsg(500401,"订单不存在");
 
 	//秒杀模块 5005XX

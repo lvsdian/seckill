@@ -9,15 +9,16 @@ import cn.andios.seckill.service.GoodsService;
 import cn.andios.seckill.service.SecKillUserService;
 import cn.andios.seckill.vo.GoodsDetailVo;
 import cn.andios.seckill.vo.GoodsVo;
-import org.codehaus.groovy.util.StringUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
-import org.thymeleaf.spring4.context.SpringWebContext;
-import org.thymeleaf.spring4.view.ThymeleafViewResolver;
+import org.springframework.web.server.ServerWebExchange;
+import org.thymeleaf.context.WebContext;
+import org.thymeleaf.spring5.context.webflux.SpringWebFluxContext;
+import org.thymeleaf.spring5.view.ThymeleafViewResolver;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -133,9 +134,10 @@ public class GoodsController {
         //return "goods_list";
 
         //手动渲染
-        SpringWebContext springWebContext = new SpringWebContext(request,response,
-                request.getServletContext(),request.getLocale(),model.asMap(),applicationContext);
-        html = thymeleafViewResolver.getTemplateEngine().process("goods_list", springWebContext);
+        WebContext webContext = new WebContext(request, response, request.getServletContext(), request.getLocale(), model.asMap());
+
+        html = thymeleafViewResolver.getTemplateEngine().process("goods_list", webContext);
+
         //如果不为空，存入redis
         if(!StringUtils.isEmpty(html)){
             redisService.set(GoodsKey.getSecKillGoodsList,"",html);
@@ -231,8 +233,8 @@ public class GoodsController {
 //        return "goods_detail";
 
         //手动渲染
-        SpringWebContext springWebContext = new SpringWebContext(request,response, request.getServletContext(),request.getLocale(),model.asMap(),applicationContext);
-        html = thymeleafViewResolver.getTemplateEngine().process("goods_detail", springWebContext);
+        WebContext webContext = new WebContext(request,response, request.getServletContext(),request.getLocale(),model.asMap());
+        html = thymeleafViewResolver.getTemplateEngine().process("goods_detail", webContext);
         //如果不为空，存入redis
         if(!StringUtils.isEmpty(html)){
             redisService.set(GoodsKey.getGoodsDetail,""+goodsId,html);

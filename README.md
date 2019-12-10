@@ -43,9 +43,9 @@
 `make`  
 `make install`  
 安装完后，修改redis.conf文件  
-69行，`bind 127.0.0.1`改为`bin 0.0.0.0` 允许任意服务器访问  
+69行，`bind 127.0.0.1`改为`bind 0.0.0.0` 允许任意服务器访问  
 136行，`daemonize no`改为`daemonize yes`  
-507行，设置密码 123456  
+507行，设置密码   
 安装一个redis服务：  
 进入到与redis.conf同级目录的utils中，执行脚本`./install_server.sh`（classpath:/graph/redis-server-install.jpg）  
 `systemctl status redis_6379`查看redis状态  
@@ -149,8 +149,57 @@ quit: 断开FTP连接
 4. RabbitMq继承spring boot
 5. nginx水平扩展，方向代理
 6. 压测/usr/local/myerlang/erlang20/bin
-LVS
-#### rabbitmq安装
+### 消息队列
+- 好处：异步处理提高系统性能（削峰、减少响应所需时间）；降低系统耦合
+- 问题：
+    - 系统可用性降低：需要考虑消息丢失或者MQ挂掉
+    - 系统复杂性提高：需要保证消息没被重复消费且保证消息传递的顺序性
+    - 一致性：万一消费者没有正确消费消息，可能会导致数据不一致
+#### JMS vs AMQP
+- jms是java的消息服务，属API规范，有点对点、发布订阅两种模式，支持TextMessage、MapMessage 等复杂的消息正文格式(5种)。
+- AMQP是高级消息队列协议，提供5种消息模型(direct/fanout/topic/headers/system)，仅支持byte[]类型信息，几种消息队列都是基于AMQP来实现的。
+#### 常见消息队列
+- 吞吐量：activeMQ、rabbitMQ比rocketMQ、kafka低  
+- 时效性：RabbitMQ基于erlang开发，并发能力强，延时很低，达到微秒级，其他三个都是 ms 级。
+- RabbitMQ基于信道channel传输，没有用tcp连接来进行数据传输，tcp链接创建和销毁对于系统性能的开销比较大消费者链接RabbitMQ其实就是一个TCP链接，一旦链接创建成功之后，
+    就会基于链接创建Channel，每个线程把持一个Channel,Channel复用TCP链接，减少了系统创建和销毁链接的消耗，提高了性能
+    
+1. 如何保证消息可靠性传输
+    1. 生产者丢失数据  
+        生产者将数据发送到rabbitmq的时可能因为网络问题丢失数据，此时可以选择用rabbitmq提供的事务功能，就是生产者发送数据之前开启rabbitmq事务，然后发送消息，
+        如果消息没有成功被rabbitmq接收到，那么生产者会收到异常报错，此时就可以回滚事务rabbitmq事务机制一搞，基本上吞吐量会下来，因为太耗性能。如果你要确保说写rabbitmq
+        的消息别丢，可以开启confirm模式，在生产者那里设置开启confirm模式之后，你每次写的消息都会分配一个唯一的id，然后如果写入了rabbitmq中，rabbitmq会给你回
+        传一个ack消息，告诉你说这个消息ok了。如果rabbitmq没能处理这个消息，会回调你一个nack接口，告诉你这个消息接收失败，你可以重试。而且你可以结合这个机制自己在
+        内存里维护每个消息id的状态，如果超过一定时间还没接收到这个消息的回调，那么你可以重发。  
+        事务机制和cnofirm机制最大的不同在于：事务机制是同步的，你提交一个事务之后会阻塞在那儿，但是confirm机制是异步的，你发送个消息之后就可以发送下一个消息，
+        然后rabbitmq接收了那个消息之后会异步回调你一个接口通知你这个消息接收到了。
+    2. rabbitmq丢失数据  
+        开启rabbitmq的持久化，就是消息写入之后会持久化到磁盘，哪怕是rabbitmq自己挂了，恢复之后会自动读取之前存储的数据，一般数据不会丢。设置持久化有两个步骤，第一个是
+        创建queue的时候将其设置为持久化的，这样就可以保证rabbitmq持久化queue的元数据，但是不会持久化queue里的数据；第二个是发送消息的时候将消息的deliveryMode设置为2，
+        就是将消息设置为持久化的，此时rabbitmq就会将消息持久化到磁盘上去。必须要同时设置这两个持久化才行，rabbitmq哪怕是挂了，再次重启，也会从磁盘上重启恢复queue，
+        恢复这个queue里的数据。而且持久化可以跟生产者那边的confirm机制配合起来，只有消息被持久化到磁盘之后，才会通知生产者ack了，所以哪怕是在持久化到磁盘之前，
+        rabbitmq挂了，数据丢了，生产者收不到ack，你也是可以自己重发的。
+    3. 消费端弄丢了数据  
+        消费端如果丢失了数据，主要是因为你消费的时候，刚消费到，还没处理，结果进程挂了，比如重启了，此时rabbitmq认为你都消费了，这数据就丢了。这个时候得用rabbitmq提供
+        的ack机制，简单来说，就是你关闭rabbitmq自动ack，可以通过一个api来调用就行，然后每次你自己代码里确保处理完的时候，再程序里ack一把。这样的话，如果你还没处理完，
+        不就没有ack？那rabbitmq就认为你还没处理完，这个时候rabbitmq会把这个消费分配给别的consumer去处理，消息是不会丢的。
+2. 如何保证消息队列高可用
+    1. 普通集群模式
+        在多台机器上启动多个rabbitmq实例，每个机器启动一个。但是你创建的queue，只会放在一个rabbtimq实例上，但是每个实例都同步queue的元数据。消费的时候，如果连接到了
+        另外一个实例，那么那个实例会从queue所在实例上拉取数据过来。  
+        消费者每次随机连接一个实例然后拉取数据，要么固定连接那个queue所在实例消费数据，
+        前者有数据拉取的开销，后者导致单实例性能瓶颈。      
+        而且如果那个放queue的实例宕机了，会导致接下来其他实例就无法从那个实例拉取，如果你开启了消息持久化，让rabbitmq落地存储消息的话，消息不一定会丢，得等这个实例恢复了，
+        然后才可以继续从这个queue拉取数据。                   
+    2. 镜像集群模式
+        创建的queue，无论元数据还是queue里的消息都会存在于多个实例上，然后每次你写消息到queue的时候，都会自动把消息到多个实例的queue里进行消息同步。何一个机器宕机了，
+        没事儿，别的机器都可以用。坏处在于，第一，这个性能开销太大了，消息同步所有机器，导致网络带宽压力和消耗很重！第二，就没有扩展性可言，如果某个queue负载很重，
+        加机器，新增的机器也包含了这个queue的所有数据，并没有办法线性扩展你的queue。
+        开启方法：在rabbitmq管理后台新增一个策略，这个策略是镜像集群模式的策略，指定的时候可以要求数据同步到所有节点的，也可以要求就同步到指定数量的节点，然后你再次
+        创建queue的时候，应用这个策略，就会自动将数据同步到其他的节点上去了。
+3. 如何保证消息不被重复消费
+    
+        
 ##### erlang安装
 创建目录`/usr/local/myerlang`,将[erlang安装包](http://www.erlang.org/download/otp_src_20.1.tar.gz)放到此目录下  
 `tar xf otp_src_20.1.tar.gz`  
@@ -162,6 +211,7 @@ LVS
 `source /etc/profile`  
 `erl`命令校验，`halt().`退出erlang命令行  
 ##### rabbitmq安装
+监控：`http://localhost:15672`  
 rabbitmq安装报错，所以用的windows版本的。
 ### 安全优化
 #### 秒杀接口地址隐藏
@@ -177,8 +227,6 @@ rabbitmq安装报错，所以用的windows版本的。
 
 -----------------------------------
 ## 常见问题
-https://github.com/daydreamdev/seconds-kill
-
 1. 防止超卖：  
     1. 防止同一用户多次秒杀：设置`user_id`和`goods_id`的唯一索引
     2. 保证stock_count>0：`update seckill_goods set stock_count = stock_count - 1 where id=#{goodsId} and stock_count > 0`
@@ -200,7 +248,7 @@ https://github.com/daydreamdev/seconds-kill
     有没有对数据进行修改，使用版本号机制或CAS操作实现。
     
   
------------------------------------  
+----------------------------------  
 ## 秒杀系统特点
 - 高性能：支持大量的并发读写
 - 一致性：有限数量的商品在同一时刻被很多倍的请求来减库存，要保证数据的准确性
@@ -209,7 +257,7 @@ https://github.com/daydreamdev/seconds-kill
 - 后端优化：将请求尽量拦截在系统上游
     - 限流：只允许少部分的流量走到后端。  
         实现方案：
-        1. `Guava RateLimiter` [参考](https://blog.csdn.net/fanrenxiang/article/details/80949079#commentBox)
+        1. `Guava RateLimiter` (这里用的Guava RateLimiter)  
         2. redis计数限流 [参考](https://github.com/TaXueWWL/shield-ratelimter)
     - 削峰：避免瞬时流量压垮系统,因此延缓用户请求，让落到数据库的请求尽量少
         - 思路：缓存瞬时流量，让服务器资源平缓处理请求。

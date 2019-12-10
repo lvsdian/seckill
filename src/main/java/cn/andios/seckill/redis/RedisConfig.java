@@ -28,14 +28,12 @@ public class RedisConfig {
     private String password;
     @Value("${spring.redis.database}")
     private Integer database;
-    @Value("${spring.redis.pool.max-active}")
+    @Value("${spring.redis.jedis.pool.max-active}")
     private Integer poolMaxActive;
-    @Value("${spring.redis.pool.max-wait}")
-    private Integer poolMaxWait;
-    @Value("${spring.redis.pool.max-idle}")
+    @Value("${spring.redis.jedis.pool.max-idle}")
     private Integer poolMaxIdle;
-    @Value("${spring.redis.pool.min-idle}")
+    @Value("${spring.redis.jedis.pool.min-idle}")
     private Integer poolMinIdle;
     @Value("${spring.redis.timeout}")
-    private Integer timeout;
+    private String timeout;
 }

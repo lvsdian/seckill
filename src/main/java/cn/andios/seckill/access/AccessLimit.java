@@ -7,7 +7,7 @@ import java.lang.annotation.Target;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
- * 自定义注解，表示在second秒内最多访问maxCount次
+ * 自定义注解，表示同一用户在second秒内最多访问maxCount次
  */
 @Retention(RUNTIME)
 @Target(ElementType.METHOD)

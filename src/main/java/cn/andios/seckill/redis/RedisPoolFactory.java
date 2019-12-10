@@ -3,9 +3,9 @@ package cn.andios.seckill.redis;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.stereotype.Service;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
+
 
 /**
  * @description:
@@ -23,10 +23,9 @@ public class RedisPoolFactory {
 
         JedisPoolConfig jedisPoolConfig = new JedisPoolConfig();
         jedisPoolConfig.setMaxIdle(redisConfig.getPoolMaxIdle());
-        jedisPoolConfig.setMaxWaitMillis(redisConfig.getPoolMaxWait()*1000);
         jedisPoolConfig.setMaxTotal(redisConfig.getPoolMaxActive());
 
         return new JedisPool(jedisPoolConfig,redisConfig.getHost(),redisConfig.getPort(),
-                redisConfig.getTimeout()*1000,redisConfig.getPassword(), redisConfig.getDatabase());
+                2000,redisConfig.getPassword(), redisConfig.getDatabase());
     }
 }
