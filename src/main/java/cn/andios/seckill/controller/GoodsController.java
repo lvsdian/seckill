@@ -88,6 +88,11 @@ public class GoodsController {
     /**
      * 其他方法也需要token等参数来判断用户是否登录，所以将token等参数在UserArgumentResolver中做了统一处理，直接接收SecKillUser参数即可
      * 依旧是返回字符串，由Thymeleaf解析成页面
+     *
+     * 压测：
+     *  QPS:1267
+     *  并发数：5000 * 10
+     *  load:15
      * @param model
      * @param secKillUser
      * @return
@@ -110,6 +115,12 @@ public class GoodsController {
      *      1.1 如果获取到了(那么本次访问不是第一次)，直接将缓存的页面返回
      *      1.2 如果没有获取到，就查数据库得到秒杀商品列表，将secKillUser和secKillGoodsList放入model中，
      *          再将model,request,response等等参数通过Thymeleaf生成页面，把页面放入redis。下次访问就会直接从redis中取
+     *
+     * 压测：
+     *  QPS:2884
+     *  并发数：5000 * 10
+     *  load:5
+     *
      * @param model
      * @param secKillUser
      * @return

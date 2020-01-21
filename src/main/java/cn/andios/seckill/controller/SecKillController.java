@@ -79,6 +79,10 @@ public class SecKillController implements InitializingBean {
      * 如果不做优化，这个方法会访问4次数据库
      * 如下，do_secKill2为页面静态化优化；do_secKill3为接口优化；do_secKill4为安全优化
      *
+     * 压测：
+     *  QPS:1306
+     *  并发数：5000 * 10
+     *
      * @param model
      * @param secKillUser
      * @param goodsId
@@ -164,6 +168,10 @@ public class SecKillController implements InitializingBean {
      *      就直接返回，如果没有，再查询redis
      *  2. redis预减库存。请求过来时，经过map判断秒杀还未结束后，就在redis中将库存减1，然后把商品id、用户信息封装成消息对象，放到rabbitmq
      *      队列中，在消息接收方(MQReceiver#receiveSecKillMessage(java.lang.String))中处理秒杀；本方法中直接返回“排队中”的状态信息。完成异步下单。
+     *
+     * 压测：
+     *  QPS:2114
+     *  并发数：5000 * 10
      *
      * @param secKillUser
      * @param goodsId

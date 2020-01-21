@@ -90,8 +90,10 @@ redis中取用户信息，如果取不到，则表明未登录或session失效�
 只测试部分命令：`redis-benchmark -t set,lpush -q -n 100000`  
 ### JMeter命令行测试
 1. windows上用JMeter录好测试文件`xxx.jmx`
-2. CentOS中下载解压JMeter,进入bin中执行`./jmeter.sh -n -t xxx.jmx -l result.jtl`,即执行压测，压测完当前目录下生成result.jtl文件即压测报告，
-将压测报告下载到windows中用JMeter打开即可。如果需要另外的xxx.txt文件，把txt和jmx放在同一目录下即可。
+2. CentOS中
+下载解压JMeter,进入bin中执行`./jmeter.sh -n -t xxx.jmx -l result.jtl`,即执行压测，压测完当前目录下生成result.jtl文件即压测报告，
+将压测报告下载到windows中用JMeter打开即可。`xxx.jmx`可以用`xxx.txt`作为数据文件，比如存放接口参数，`xxx.jmx`中指定`xxx.txt`文件位置即可。
+查看cpu核数：`cat /proc/cpuinfo | grep  processor`
 ### nohup &
 原程序的的标准输出被自动改向到当前目录下的`nohup.out`文件中，起到了log的作用。  
 要运行后台中的`nohup`命令，添加 & （ 表示”and”的符号）到命令的尾部。  
@@ -155,16 +157,6 @@ quit: 断开FTP连接
     - 系统可用性降低：需要考虑消息丢失或者MQ挂掉
     - 系统复杂性提高：需要保证消息没被重复消费且保证消息传递的顺序性
     - 一致性：万一消费者没有正确消费消息，可能会导致数据不一致
-#### JMS vs AMQP
-- jms是java的消息服务，属API规范，有点对点、发布订阅两种模式，支持TextMessage、MapMessage 等复杂的消息正文格式(5种)。
-- AMQP是高级消息队列协议，提供5种消息模型(direct/fanout/topic/headers/system)，仅支持byte[]类型信息，几种消息队列都是基于AMQP来实现的。
-#### 常见消息队列
-- 吞吐量：activeMQ、rabbitMQ比rocketMQ、kafka低  
-- 时效性：RabbitMQ基于erlang开发，并发能力强，延时很低，达到微秒级，其他三个都是 ms 级。
-- 可用性：activeMQ、rabbitMQ基于主从架构实现高可用，rocketMQ、kafka基于分布式架构实现高可用
-- RabbitMQ基于信道channel传输，没有用tcp连接来进行数据传输，tcp链接创建和销毁对于系统性能的开销比较大消费者链接RabbitMQ其实就是一个TCP链接，一旦链接创建成功之后，
-    就会基于链接创建Channel，每个线程把持一个Channel,Channel复用TCP链接，减少了系统创建和销毁链接的消耗，提高了性能
-    
 1. 如何保证消息可靠性传输
     1. 生产者丢失数据  
         - 生产者将数据发送到rabbitmq的时可能因为网络问题丢失数据，此时可以选择用rabbitmq提供的事务功能，就是生产者发送数据之前开启rabbitmq事务，然后发送消息，
@@ -203,7 +195,7 @@ quit: 断开FTP连接
         - 开启方法：在rabbitmq管理后台新增一个策略，这个策略是镜像集群模式的策略，指定的时候可以要求数据同步到所有节点的，也可以要求就同步到指定数量的节点，然后你再次
         创建queue的时候，应用这个策略，就会自动将数据同步到其他的节点上去了。
 3. 如何保证消息不被重复消费  
-    每次重启系统，可能会有消息被重复消费，此时就需要保证幂等性
+    每次重启系统，可能会有消息被重复消费，此时就需要保证幂等性(幂等：同一条件下，对同一个业务的操作，不管操作多少次，结果都一样。)
     1. 如果消费者是写入数据库，可以先根据主键查一下，如果这数据已经有了就直接update
     2. 如果是写入redis，那没问题了，反正每次都是set，天然幂等性
     3. 让生产者发送每条数据的时候，里面加一个全局唯一的id，类似订单id之类的东西，然后你这里消费到了之后，先根据这个id去比如redis里查一下，之前消费过吗？

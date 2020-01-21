@@ -28,7 +28,7 @@ public class MQConfig {
     public static  final String TOPIC_QUEUE2 = "topic_queue2";
     public static  final String TOPIC_EXCHANGE = "topic_exchange";
     public static  final String ROUTING_KEY1 = "topic_routing.key1";
-    /** 表示一个单词 #表示0或多个单词 */
+    /** *表示一个单词 #表示0或多个单词 */
     public static  final String ROUTING_KEY2 = "topic_routing.#";
 
     /**
