@@ -1,70 +1,37 @@
-### 项目框架
-1. 第一章
-    1. spring boot环境搭建
-    2. 集成Thymeleaf,Result结果封装
-    3. 集成Mybatis+Druid
-    4. 集成Jedis+Redis安装，通用缓存key封装
-2. 第二章
-    1. 数据库设计
-    2. 明文密码两次MD5处理
-    3. JSR303校验+全局异常处理
-    4. 分布式Session
-3. 第三章
-    1. 数据库设计(没有完全遵守三范式)    
-    2. 商品列表页
-    3. 商品详情页
-    4. 订单详情页
-4. 第四章
-    1. JMeter入门  
-    2. 自定义变量，模拟多用户
-    3. JMeter命令行使用
-5. 第五章 页面优化
-    1. 页面缓存+URL缓存+对象缓存
-    2. 页面静态化，前后端分离
-    3. 静态资源优化
-    4. CDN优化
-6. 第六章 接口优化
-    1. Redis预减库存减少数据库访问
-    2. 内存标记减少Redis访问
-    3. RabbitMQ队列缓冲，异步下单，增强用户体验
-    4. RabbitMQ安装与Spring Boot集成
-    5. 访问Nginx水平扩展
-    6. 压测
-7. 第七章 安全优化
-    1. 秒杀地址隐藏
-    2. 数学公式验证码
-    3. 接口防刷
-    
 ### redis部署
-`/usr/local`下`mkdir myredis`，依次执行  
-`wget http://download.redis.io/releases/redis-5.0.4.tar.gz`  
-`tar xzf redis-5.0.4.tar.gz`  
-`cd redis-5.0.4`  
-`make`  
-`make install`  
-安装完后，修改redis.conf文件  
+1. `/usr/local`下`mkdir myredis`，依次执行  
+    ```
+        wget http://download.redis.io/releases/redis-5.0.4.tar.gz
+        tar xzf redis-5.0.4.tar.gz  
+        cd redis-5.0.4  
+        make
+        make install
+     ```
+2. 安装完后，修改redis.conf文件  
 69行，`bind 127.0.0.1`改为`bind 0.0.0.0` 允许任意服务器访问  
 136行，`daemonize no`改为`daemonize yes`  
 507行，设置密码   
-安装一个redis服务：  
-进入到与redis.conf同级目录的utils中，执行脚本`./install_server.sh`（classpath:/graph/redis-server-install.jpg）  
+3. 安装一个redis服务：  
+进入到与redis.conf同级目录的utils中，执行脚本`./install_server.sh` 。  
 `systemctl status redis_6379`查看redis状态  
 `systemctl start redis_6379`启动服务  
 这项服务其实在`/etc/init.d/redis_6379`这个shell文件中，也可以手动修改文件中的内容。
+![](src/main/resources/graph/redis-server-install.jpg)
 ### redis集成
-`application.properties`中配置好redis相关参数，  
-`redisConfig`类读取`application.properties`配置的参数，  
-`RedisPoolFactory`中注入`redisConfig`对象获取配置创建jedis连接池,  
-`RedisService`类中注入`redisPoolFactory`获取jedis连接池，获取jedis对象提供`get set incr decr exists`等方法  
-希望在不同模块添加数据到redis时区分开来，加上各自标识，所以创建了`KeyPrefix`接口，设置前缀和过期时间，抽象类`BasePrefix`
-实现了这个接口，`BasePrefix`中设置了前缀为 类名+prefix，具体的prefix和过期时间由子类完成设置。比如存一个SecKill对象，
-键为 类名+prefix+本来的键 ，即 `"SecKillUser" + "_token_" + token`.值为SecKill对象的json字符串
+1. `application.properties`中配置好redis相关参数，  
+2. `redisConfig`类读取`application.properties`配置的参数，  
+3. `RedisPoolFactory`中注入`redisConfig`对象获取配置创建jedis连接池,  
+4. `RedisService`类中注入`redisPoolFactory`获取jedis连接池，获取jedis对象提供`get set incr decr exists`等方法  
+5. 希望在不同模块添加数据到redis时区分开来，加上各自标识，所以创建了`KeyPrefix`接口，设置前缀和过期时间，抽象类`BasePrefix`
+实现了这个接口，`BasePrefix`中设置了前缀为 类名+prefix，具体的`prefix`和过期时间由子类完成设置。
+6. 比如存一个SecKill对象，键为 `类名+prefix+本来的键` ，即 `"SecKillUser" + "_token_" + token`，值为SecKill对象的json字符串
 ### 数据库设计
-有goods表，order表，分别存储商品基本信息(比如id，name,img，price等)，订单基本信息(比如id，用户id，商品id，创建时间等)；  
-同时建了seckill_goods表，用来存储秒杀特有的相关信息，比如商品id，秒杀库存，秒杀价格等；seckill_order表中只存id,用户id，商品id,订单id  
+1. goods表，order表，分别存储商品基本信息(比如id，name,img，price等)，订单基本信息(比如id，用户id，商品id，创建时间等)；  
+2. seckill_goods表，用来存储秒杀特有的相关信息，比如商品id，秒杀库存，秒杀价格等；seckill_order表中只存id,用户id，商品id,订单id，user表，seckill_user表中只存用户
+id，昵称，用户加密后的密码，盐值等。
 ### 两次md5加密
-http在网络上通过明文传输，第一次加密防止用户密码明文传输到服务端，在客户端进行加密，采用明文+固定salt；  
-第二次在服务端再进行加密，采用客户端传过来的加密密码+随机salt，然后存入数据库(这个随机salt也存入数据库)。  
+1. http在网络上通过明文传输，第一次加密防止用户密码明文传输到服务端，在客户端进行加密，采用明文+固定salt；  
+2. 第二次在服务端再进行加密，采用客户端传过来的加密密码+随机salt，然后存入数据库(这个随机salt也存入数据库)。  
 加密参考`MD5Util`类  
 ### JSR303自定义注解
 登录逻辑见`LoginController`和`SecKillUserService.login`。在`LoginVo`类中使用自定义注解`@IsMobile`判断输入的`mobile`是否合法。
@@ -148,82 +115,13 @@ quit: 断开FTP连接
     5. 客户端轮询，是否秒杀成功 
     `SecKillController.secKill2`到`SecKillController.secKill3`
 3. 请求先入队缓冲，异步下单，增强用户体验
-4. RabbitMq继承spring boot
+4. RabbitMQ集成spring boot
+    1. `application.properties`中配置好rabbitmq参数
+    2. 控制层将秒杀请求封装入队并立即返回
+    3. 消费端(`MQReceiver.receiveSecKillMessage`)取出消息执行秒杀逻辑
+    4. 前台请求轮询(`SecKillController.secKillResult`)获取秒杀结果
 5. nginx水平扩展，方向代理
 6. 压测/usr/local/myerlang/erlang20/bin
-### 消息队列
-- 好处：异步处理提高系统性能（削峰、减少响应所需时间）；降低系统耦合
-- 问题：
-    - 系统可用性降低：需要考虑消息丢失或者MQ挂掉
-    - 系统复杂性提高：需要保证消息没被重复消费且保证消息传递的顺序性
-    - 一致性：万一消费者没有正确消费消息，可能会导致数据不一致
-1. 如何保证消息可靠性传输
-    1. 生产者丢失数据  
-        - 生产者将数据发送到rabbitmq的时可能因为网络问题丢失数据，此时可以选择用rabbitmq提供的事务功能，就是生产者发送数据之前开启rabbitmq事务，然后发送消息，
-        如果消息没有成功被rabbitmq接收到，那么生产者会收到异常报错，此时就可以回滚事务，但使用rabbitmq事务机制，基本上吞吐量会下来，因为太耗性能。如果要确保写rabbitmq
-        的消息别丢，可以开启confirm模式。
-        - 在生产者那里设置开启confirm模式之后，你每次写的消息都会分配一个唯一的id，然后如果写入了rabbitmq中，rabbitmq会给你回
-        传一个ack消息，告诉你说这个消息ok了。如果rabbitmq没能处理这个消息，会回调你一个nack接口，告诉你这个消息接收失败，你可以重试。而且你可以结合这个机制自己在
-        内存里维护每个消息id的状态，如果超过一定时间还没接收到这个消息的回调，那么你可以重发。  
-        - 事务机制和cnofirm机制最大的不同在于：事务机制是同步的，你提交一个事务之后会阻塞在那儿，但是confirm机制是异步的，你发送个消息之后就可以发送下一个消息，
-        然后rabbitmq接收了那个消息之后会异步回调你一个接口通知你这个消息接收到了。
-    2. rabbitmq丢失数据  
-        - 开启rabbitmq的持久化。就是消息写入之后会持久化到磁盘，哪怕是rabbitmq自己挂了，恢复之后会自动读取之前存储的数据，一般数据不会丢。
-        - 设置持久化有两个步骤，
-            - 第一个是创建queue的时候将其设置为持久化的，这样就可以保证rabbitmq持久化queue的元数据，但是不会持久化queue里的数据；
-            - 第二个是发送消息的时候将消息的deliveryMode设置为2，就是将消息设置为持久化的，此时rabbitmq就会将消息持久化到磁盘上去。必须要同时设置这两个持久化才行，
-            rabbitmq哪怕是挂了，再次重启，也会从磁盘上重启恢复queue，恢复这个queue里的数据。而且持久化可以跟生产者那边的confirm机制配合起来，只有消息被持久化到磁盘之后，
-            才会通知生产者ack了，所以哪怕是在持久化到磁盘之前，rabbitmq挂了，数据丢了，生产者收不到ack，你也是可以自己重发的。
-    3. 消费端弄丢了数据  
-        - 消费端如果丢失了数据，主要是因为你消费的时候，刚消费到，还没处理，结果进程挂了，比如重启了，此时rabbitmq认为你都消费了，这数据就丢了。这个时候得用rabbitmq提供
-        的ack机制，简单来说，就是你关闭rabbitmq自动ack，可以通过一个api来调用就行，然后每次你自己代码里确保处理完的时候，再程序里ack一把。这样的话，如果你还没处理完，
-        不就没有ack？那rabbitmq就认为你还没处理完，这个时候rabbitmq会把这个消费分配给别的consumer去处理，消息是不会丢的。
-2. 如何保证消息队列高可用
-    1. 普通集群模式
-        - 在多台机器上启动多个rabbitmq实例，每个机器启动一个。但是你创建的queue，只会放在一个rabbtimq实例上，但是每个实例都同步queue的元数据。消费的时候，如果连接到了
-        另外一个实例，那么那个实例会从queue所在实例上拉取数据过来。  
-        - 消费者每次随机连接一个实例然后拉取数据，要么固定连接那个queue所在实例消费数据，
-        - 前者有数据拉取的开销，后者导致单实例性能瓶颈。      
-        - 而且如果那个放queue的实例宕机了，会导致接下来其他实例就无法从那个实例拉取，如果你开启了消息持久化，让rabbitmq落地存储消息的话，消息不一定会丢，得等这个实例恢复了，
-        然后才可以继续从这个queue拉取数据。                   
-    2. 镜像集群模式
-        - 创建的queue，无论元数据还是queue里的消息都会存在于多个实例上，然后每次你写消息到queue的时候，都会自动把消息到多个实例的queue里进行消息同步。何一个机器宕机了，
-        没事儿，别的机器都可以用。
-        - 坏处在于：
-            - 第一，这个性能开销太大了，消息同步所有机器，导致网络带宽压力和消耗很重！
-            - 第二，就没有扩展性可言，如果某个queue负载很重，加机器，新增的机器也包含了这个queue的所有数据，并没有办法线性扩展你的queue。
-        - 开启方法：在rabbitmq管理后台新增一个策略，这个策略是镜像集群模式的策略，指定的时候可以要求数据同步到所有节点的，也可以要求就同步到指定数量的节点，然后你再次
-        创建queue的时候，应用这个策略，就会自动将数据同步到其他的节点上去了。
-3. 如何保证消息不被重复消费  
-    每次重启系统，可能会有消息被重复消费，此时就需要保证幂等性(幂等：同一条件下，对同一个业务的操作，不管操作多少次，结果都一样。)
-    1. 如果消费者是写入数据库，可以先根据主键查一下，如果这数据已经有了就直接update
-    2. 如果是写入redis，那没问题了，反正每次都是set，天然幂等性
-    3. 让生产者发送每条数据的时候，里面加一个全局唯一的id，类似订单id之类的东西，然后你这里消费到了之后，先根据这个id去比如redis里查一下，之前消费过吗？
-        如果没有消费过，你就处理，然后这个id写redis。如果消费过了，那你就别处理了，保证别重复处理相同的消息即可。
-    4. 基于数据库的唯一键来保证重复数据不会重复插入多条。重复数据插入的时候，因为有唯一键约束了，所以重复数据只会插入报错，不会导致数据库中出现脏数据。
-4. 如何保证消息顺序性
-    1. 场景一：一个queue，多个consumer。  
-        方案：拆分多个queue，每个queue一个consumer，就是多一些queue而已，确实是麻烦点；或者就一个queue但是对应一个consumer，然后这个consumer内部用内
-        存队列做排队，然后分发给底层不同的worker来处理
-5. 如何解决消息队列的延时以及过期失效问题？消息队列满了以后该怎么处理？有几百万消息持续积压几小时，说说怎么解决?   
-    - 场景一：比如消费端每次消费要写入mysql，结果mysql挂了，消费端不能消费了或者消费速度及其慢，这时大量消息就会堆积在队列中。
-    - 解决方案(临时紧急扩容)：
-        1. 先修复consumer问题，确保其恢复消费速度，然后将现有consumer都停掉。
-        2. 新建一个topic，partition是原来的10倍，临时建立好原先10倍或者20倍的queue数量
-        3. 然后写一个临时的分发数据的consumer程序，这个程序部署上去消费积压的数据，消费之后不做耗时的处理，直接均匀轮询写入临时建立好的10倍数量的queue
-        4. 接着临时征用10倍的机器来部署consumer，每一批consumer消费一个临时queue的数据
-        5. 这种做法相当于是临时将queue资源和consumer资源扩大10倍，以正常的10倍速度来消费数据
-        6. 等快速消费完积压数据之后，得恢复原先部署架构，重新用原先的consumer机器来消费消息
-    - 场景二：rabbitmq中大量积压的消息设置了过期时间TTL，积压超过一定的时间就会被rabbitmq给清理掉，这个数据就没了。
-    - 解决方案(批量重导)：
-        高峰期过后，将白天丢失的数据查出来再放到mq里面。
-    - 场景三：消息长时间积压，导致mq快写满了
-6. 如果让你写一个消息队列，该如何进行架构设计啊？说一下你的思路
-    - 需要支持可扩展性，需要时可以快速扩容
-    - 需要落地磁盘，才能保证进程挂掉时数据不会丢失。那落磁盘的时候怎么落啊？顺序写，这样就没有磁盘随机读写的寻址开销，磁盘顺序读写的性能是很高的     
-    - 需要保证可用性，
-    - 需要支持数据0丢失，
-
 ### 安全优化
 #### 秒杀接口地址隐藏
 思路：`goods_detail.htm`中点击立即秒杀，先去请求`secKill/path`接口校验验证码，获取秒杀地址path,然后带着path访问真正的秒杀接口`/secKill/{path}/do_secKill4`
@@ -268,7 +166,7 @@ quit: 断开FTP连接
 - 后端优化：将请求尽量拦截在系统上游
     - 限流：只允许少部分的流量走到后端。  
         实现方案：
-        1. `Guava RateLimiter` (这里用的Guava RateLimiter)  
+        1. `Guava RateLimiter` (本项目中用的Guava RateLimiter)  
         2. redis计数限流 [参考](https://github.com/TaXueWWL/shield-ratelimter)
     - 削峰：避免瞬时流量压垮系统,因此延缓用户请求，让落到数据库的请求尽量少
         - 思路：缓存瞬时流量，让服务器资源平缓处理请求。
