@@ -1,3 +1,32 @@
+* [业务处理](#%E4%B8%9A%E5%8A%A1%E5%A4%84%E7%90%86)
+  * [redis部署](#redis%E9%83%A8%E7%BD%B2)
+  * [redis集成](#redis%E9%9B%86%E6%88%90)
+  * [数据库设计](#%E6%95%B0%E6%8D%AE%E5%BA%93%E8%AE%BE%E8%AE%A1)
+  * [两次md5加密](#%E4%B8%A4%E6%AC%A1md5%E5%8A%A0%E5%AF%86)
+  * [JSR303自定义注解](#jsr303%E8%87%AA%E5%AE%9A%E4%B9%89%E6%B3%A8%E8%A7%A3)
+  * [全局异常处理](#%E5%85%A8%E5%B1%80%E5%BC%82%E5%B8%B8%E5%A4%84%E7%90%86)
+  * [分布式session](#%E5%88%86%E5%B8%83%E5%BC%8Fsession)
+  * [redis压测](#redis%E5%8E%8B%E6%B5%8B)
+  * [文件传输](#%E6%96%87%E4%BB%B6%E4%BC%A0%E8%BE%93)
+    * [sz,rz](#szrz)
+    * [sftp](#sftp)
+* [优化](#%E4%BC%98%E5%8C%96)
+  * [页面优化](#%E9%A1%B5%E9%9D%A2%E4%BC%98%E5%8C%96)
+  * [接口优化](#%E6%8E%A5%E5%8F%A3%E4%BC%98%E5%8C%96)
+  * [安全优化](#%E5%AE%89%E5%85%A8%E4%BC%98%E5%8C%96)
+    * [秒杀接口地址隐藏](#%E7%A7%92%E6%9D%80%E6%8E%A5%E5%8F%A3%E5%9C%B0%E5%9D%80%E9%9A%90%E8%97%8F)
+    * [数学公式校验码(安全、分散用户请求)](#%E6%95%B0%E5%AD%A6%E5%85%AC%E5%BC%8F%E6%A0%A1%E9%AA%8C%E7%A0%81%E5%AE%89%E5%85%A8%E5%88%86%E6%95%A3%E7%94%A8%E6%88%B7%E8%AF%B7%E6%B1%82)
+    * [接口限流防刷](#%E6%8E%A5%E5%8F%A3%E9%99%90%E6%B5%81%E9%98%B2%E5%88%B7)
+      * [自定义拦截器实现对单个用户做限制](#%E8%87%AA%E5%AE%9A%E4%B9%89%E6%8B%A6%E6%88%AA%E5%99%A8%E5%AE%9E%E7%8E%B0%E5%AF%B9%E5%8D%95%E4%B8%AA%E7%94%A8%E6%88%B7%E5%81%9A%E9%99%90%E5%88%B6)
+      * [Guava限流](#guava%E9%99%90%E6%B5%81)
+  * [JMeter命令行测试](#jmeter%E5%91%BD%E4%BB%A4%E8%A1%8C%E6%B5%8B%E8%AF%95)
+  * [nohup &amp;](#nohup-)
+* [秒杀问题](#%E7%A7%92%E6%9D%80%E9%97%AE%E9%A2%98)
+* [一致性问题](#%E4%B8%80%E8%87%B4%E6%80%A7%E9%97%AE%E9%A2%98)
+  * [Cache Aside Pattern](#cache-aside-pattern)
+  * [Read/Write Through](#readwrite-through)
+  * [Write Behind Caching](#write-behind-caching)
+## 业务处理
 ### redis部署
 1. `/usr/local`下`mkdir myredis`，依次执行  
     ```
@@ -55,16 +84,6 @@ redis中取用户信息，如果取不到，则表明未登录或session失效�
 一百个并发，10万个请求：`redis-benchmark -h 127.0.0.1 -p 6379 -c 100  -n 100000`   
 存取大小为100字节的数据包：`redis-benchmark -h 127.0.0.1 -p 6379 -q -d 100`   
 只测试部分命令：`redis-benchmark -t set,lpush -q -n 100000`  
-### JMeter命令行测试
-1. windows上用JMeter录好测试文件`xxx.jmx`
-2. CentOS中
-下载解压JMeter,进入bin中执行`./jmeter.sh -n -t xxx.jmx -l result.jtl`,即执行压测，压测完当前目录下生成result.jtl文件即压测报告，
-将压测报告下载到windows中用JMeter打开即可。`xxx.jmx`可以用`xxx.txt`作为数据文件，比如存放接口参数，`xxx.jmx`中指定`xxx.txt`文件位置即可。
-查看cpu核数：`cat /proc/cpuinfo | grep  processor`
-### nohup &
-原程序的的标准输出被自动改向到当前目录下的`nohup.out`文件中，起到了log的作用。  
-要运行后台中的`nohup`命令，添加 & （ 表示”and”的符号）到命令的尾部。  
-比如`nohup /root/start.sh &`,该脚本的输出会在当前目录的nohup.out文件中，该脚本会在后台运行。
 ### 文件传输
 #### sz,rz
 rz，sz是Linux/Unix同Windows进行ZModem文件传输的命令行工具，优点就是不用再开一个sftp工具登录上去上传下载文件。  
@@ -88,11 +107,13 @@ cd: 改变远程上传目录
 get: 将远程目录中文件下载到本地目录  
 put: 将本地目录中文件上传到远程主机(linux)  
 quit: 断开FTP连接  
+## 优化
 ### 页面优化
 1. 页面缓存+url缓存+对象缓存---减轻数据库压力  
     - 页面缓存：GoodsController中改进的list，detail方法。取的时候先从缓存中取，如果没有取到，就先使用ThymeleafViewResolver根据参数生成html页面，
 再存入redis中。缓存时间一般较短。  
-    - 对象缓存：SecKillUserService中的getById,updatePassword(更新密码时先更新数据库，再更新缓存，原因参见下面的博客)方法。取对象时，先从缓存中
+    ![](src/main/resources/graph/page_cache.png)
+    - 对象缓存：SecKillUserService中的getById,updatePassword(更新密码时先更新数据库，再更新缓存)方法。取对象时，先从缓存中
     取，如果没有，就从数据库中取。更新对象时，注意要更新缓存。
 2. 页面静态化 前后端分离  
     - 常用技术angular js、vue (这里使用的jQuery)  
@@ -113,7 +134,6 @@ quit: 断开FTP连接
     3. 请求入队，放到消息队列中，立即返回排队中
     4. 请求出队，生成订单，减少库存 
     5. 客户端轮询，是否秒杀成功 
-    `SecKillController.secKill2`到`SecKillController.secKill3`
 3. 请求先入队缓冲，异步下单，增强用户体验
 4. RabbitMQ集成spring boot
     1. `application.properties`中配置好rabbitmq参数
@@ -121,7 +141,9 @@ quit: 断开FTP连接
     3. 消费端(`MQReceiver.receiveSecKillMessage`)取出消息执行秒杀逻辑
     4. 前台请求轮询(`SecKillController.secKillResult`)获取秒杀结果
 5. nginx水平扩展，方向代理
-6. 压测/usr/local/myerlang/erlang20/bin
+6. 压测
+        ![](src/main/resources/graph/rabbitmq_1.png)
+        ![](src/main/resources/graph/rabbitmq_2.png)
 ### 安全优化
 #### 秒杀接口地址隐藏
 思路：`goods_detail.htm`中点击立即秒杀，先去请求`secKill/path`接口校验验证码，获取秒杀地址path,然后带着path访问真正的秒杀接口`/secKill/{path}/do_secKill4`
@@ -131,18 +153,34 @@ quit: 断开FTP连接
 3. ScriptEngine使用
 `goods_detail.htm`页面加载完成时就会请求`/secKill/verifyCode`接口中生成验证码，用户点击秒杀会先请求`secKill/path`接口校验验证码
 #### 接口限流防刷
+##### 自定义拦截器实现对单个用户做限制
 单个地方使用：`SecKillController.secKillPath`    
 通用设置：自定义注解`AccessLimit`，自定义拦截器`AccessInterceptor`,发现类上面有`AccessLimit`注解后就会进行判断
-
+        ![](src/main/resources/graph/rate_limit.jpg)
+##### Guava限流
+用RateLimiter限制指定时间内的访问量
+        ![](src/main/resources/graph/rate_limit_2.jpg) 
+### JMeter命令行测试
+1. windows上用JMeter录好测试文件`xxx.jmx`
+2. CentOS中
+下载解压JMeter,进入bin中执行`./jmeter.sh -n -t xxx.jmx -l result.jtl`,即执行压测，压测完当前目录下生成result.jtl文件即压测报告，
+将压测报告下载到windows中用JMeter打开即可。`xxx.jmx`可以用`xxx.txt`作为数据文件，比如存放接口参数，`xxx.jmx`中指定`xxx.txt`文件位置即可。
+查看cpu核数：`cat /proc/cpuinfo| grep "cpu cores"| uniq`
+服务器参数为1核1G，并发在5000 * 10时，QPS达到860左右，优化后，并发在5000 * 10时，QPS达到1480左右
+        ![](src/main/resources/graph/info.png)
+### nohup &
+- 原程序的的标准输出被自动改向到当前目录下的`nohup.out`文件中，起到了log的作用。  
+- 要运行后台中的`nohup`命令，添加 & （ 表示”and”的符号）到命令的尾部。  
+- 比如`nohup /root/start.sh &`,该脚本的输出会在当前目录的nohup.out文件中，该脚本会在后台运行。
 -----------------------------------
-## 常见问题
+## 秒杀问题
 1. 防止超卖：  
     1. 防止同一用户多次秒杀：设置`user_id`和`goods_id`的唯一索引
     2. 保证stock_count>0：`update seckill_goods set stock_count = stock_count - 1 where id=#{goodsId} and stock_count > 0`
     3. 乐观锁：`update seckill_goods set count = count - 1, version = version + 1 where id=#{goodsId} and version = #{version}`
+        总是认为不会产生并发问题，每次去取数据的时候总认为不会有其他线程对数据进行修改，因此不会上锁，但是在更新时会判断其他线程在这之前有没有对数据进行修改，使用版本号机制实现
     4. redis预减库存减少数据库访问　内存标记减少redis访问
     5. 悲观锁虽然可以解决超卖，但加锁的时间可能会很长，限制其他用户访问，如果请求过多系统可能会出现异常。乐观锁不加锁，如果失败直接返回，可以承受高并发。
-
 2.
     mysql悲观锁：对数据被外界（包括本系统当前的其他事务，以及来自外部系统的事务处理）修改持保守态度，因此，在整个数据处理过程中，将数据处于锁定状态。
     悲观锁的实现，往往依靠数据库提供的锁机制
@@ -152,47 +190,6 @@ quit: 断开FTP连接
     `select stock_count from seckill_goods where id = #{goodsId} for update`
     `update seckill_goods set stock_count = stock_count - 1`
     `commit`  
-4. 
-    mysql乐观锁：总是认为不会产生并发问题，每次去取数据的时候总认为不会有其他线程对数据进行修改，因此不会上锁，但是在更新时会判断其他线程在这之前
-    有没有对数据进行修改，使用版本号机制或CAS操作实现。
-    
-  
-----------------------------------  
-## 秒杀系统特点
-- 高性能：支持大量的并发读写
-- 一致性：有限数量的商品在同一时刻被很多倍的请求来减库存，要保证数据的准确性
-- 高可用：秒杀时一瞬间会涌入大量流量，要避免系统宕机
-## 优化
-- 后端优化：将请求尽量拦截在系统上游
-    - 限流：只允许少部分的流量走到后端。  
-        实现方案：
-        1. `Guava RateLimiter` (本项目中用的Guava RateLimiter)  
-        2. redis计数限流 [参考](https://github.com/TaXueWWL/shield-ratelimter)
-    - 削峰：避免瞬时流量压垮系统,因此延缓用户请求，让落到数据库的请求尽量少
-        - 思路：缓存瞬时流量，让服务器资源平缓处理请求。
-        - 方案：
-            1. 用消息队列，把同步的直接调用转成异步的间接推送，中间通过一个队列承接瞬时的流量洪峰,这里用的`RabbitMQ`
-            2. 让用户答题，比如这里的数学公式，一方面**防止用户作弊**，同时可以**延缓请求**，如果做一些图片题目，要把图片推送到CDN上，防止
-                加载慢，影响体验。
-            3. 分层过滤。比如请求经过CDN->前台读系统->后台写系统->数据库，那么CDN这层就可以过滤掉大量的图片，静态资源的请求。前台读系统对读不做强一致性要求，
-                防止一致性校验产生瓶颈的问题。最后在写数据时要保证强一致性，
-    - 异步：将同步请求转为异步请求，也即削峰处理。
-    - 缓存：创建订单时，会先判断库存，可将商品信息放在缓存中，减少数据库的访问。
-    - 负载均衡：利用Nginx等使用多个服务器并发处理请求，减少单个服务器压力。
-- 前端优化：
-    - 让用户答题，一方面**防止用户作弊**，同时可以**延缓请求**
-    - 禁止重复提交，每发起一次秒杀后，需等待一定时间
-    - 用户秒杀到商品后，将提交按钮置灰
-    - 将前端静态数据直接放缓从离用户最近的地方，比如用户浏览器、CDN
-- 防作弊优化：
-    - 隐藏秒杀接口，防止恶意用户刷接口
-    - 一个账号，一次性发送多个请求：用户通过浏览器插件或其他工具一次性发送多个请求。
-        - 解决方案：在程序入口处，一个账号只允许接受1个请求，其他请求过滤。不仅解决了同一个账号，发送N个请求的问题，还保证了后续的逻辑流程的安全。
-        - 实现方案：可以通过Redis这种内存缓存服务，写入一个标志位（只允许1个请求写成功，结合watch的乐观锁的特性），成功写入的则可以继续参加。
-    - 多个账号一次性发送多个请求：比如微博上的僵尸账号。
-        - 解决方案：如果同一IP地址请求频率过高，可以弹出验证码或者封IP
-    - 检测账号活跃度或等级信息，对僵尸用户进行限制
------------------------------------ 
 ## 一致性问题
 ### Cache Aside Pattern
 - 实现起来比较简单，但是需要维护两个数据存储，一个是缓存，一个是数据库。
